@@ -1,5 +1,5 @@
 import { isHoveredInNeovim, isNotHoveredInNeovim } from "./utils/hover-utils"
-import { yaziText } from "./utils/yazi-utils"
+import { assertYaziIsReady, yaziNormalModeText } from "./utils/yazi-utils"
 
 // NOTE: cypress doesn't support the tab key, but control+i seems to work fine
 // https://docs.cypress.io/api/commands/type#Typing-tab-key-does-not-work
@@ -26,8 +26,9 @@ describe("revealing another open split (buffer) in yazi", () => {
       },
       startupScriptModifications: [
         "modify_yazi_config_and_add_hovered_buffer_background.lua",
+        "add_yazi_context_assertions.lua",
       ],
-    }).then((_nvim) => {
+    }).then((nvim) => {
       // sanity check to make sure the files are open
       cy.contains(view.leftFile.text)
       cy.contains(view.centerFile.text)
@@ -41,7 +42,8 @@ describe("revealing another open split (buffer) in yazi", () => {
 
       // start yazi and wait for it to be visible
       cy.typeIntoTerminal("{upArrow}")
-      cy.contains(yaziText)
+      assertYaziIsReady(nvim)
+      cy.contains(yaziNormalModeText)
 
       // Switch to the other buffers' directories in yazi. This should make
       // yazi send a hover event for the new, highlighted file.
@@ -84,15 +86,17 @@ describe("revealing another open split (buffer) in yazi", () => {
         ],
       },
       startupScriptModifications: [
+        "add_yazi_context_assertions.lua",
         "modify_yazi_config_and_add_hovered_buffer_background.lua",
       ],
-    }).then((_nvim) => {
+    }).then((nvim) => {
       isNotHoveredInNeovim(view.leftAndCenterFile.text)
       isNotHoveredInNeovim(view.rightFile.text)
 
       // start yazi
       cy.typeIntoTerminal("{upArrow}")
-      cy.contains(yaziText)
+      assertYaziIsReady(nvim)
+      cy.contains(yaziNormalModeText)
 
       cy.typeIntoTerminal("{control+i}")
 

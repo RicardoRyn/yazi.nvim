@@ -3,15 +3,11 @@ import fs from "fs"
 import { readFile, rm } from "fs/promises"
 import path from "path"
 import { fileURLToPath } from "url"
+import { inspect } from "util"
 
 const __dirname = fileURLToPath(new URL(".", import.meta.resolve(".")))
 
-const yaziLogFile = path.join(
-  __dirname,
-  "test-environment",
-  ".repro",
-  "yazi.log",
-)
+const yaziLogFile = path.resolve(__dirname, "test-environment/.repro/yazi.log")
 
 console.log(`yaziLogFile: ${yaziLogFile}`)
 
@@ -48,7 +44,10 @@ export default defineConfig({
         async showYaziLog(): Promise<null> {
           try {
             const log = await readFile(yaziLogFile, "utf-8")
-            console.log(`${yaziLogFile}`, log.split("\n"))
+            console.log(
+              `${yaziLogFile}`,
+              inspect(log.split("\n"), { maxArrayLength: null, colors: true }),
+            )
             return null
           } catch (err) {
             console.error(err)

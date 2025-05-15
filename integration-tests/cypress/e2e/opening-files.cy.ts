@@ -2,8 +2,14 @@ import assert from "assert"
 import type { MyTestDirectoryFile } from "MyTestDirectory"
 import { z } from "zod"
 import {
+  assertYaziIsHovering,
+  hoverFileAndVerifyItsHovered,
+} from "./utils/hover-utils"
+import {
+  assertYaziIsReady,
   isFileNotSelectedInYazi,
   isFileSelectedInYazi,
+  yaziNormalModeText,
 } from "./utils/yazi-utils"
 
 describe("opening files", () => {
@@ -24,15 +30,18 @@ describe("opening files", () => {
   })
 
   it("can open a file that was selected in yazi", () => {
-    cy.startNeovim().then((nvim) => {
+    cy.startNeovim({
+      startupScriptModifications: [
+        "add_yazi_context_assertions.lua",
+        "add_command_to_reveal_a_file.lua",
+      ],
+    }).then((nvim) => {
       cy.contains("If you see this text, Neovim is ready!")
       cy.typeIntoTerminal("{upArrow}")
+      assertYaziIsReady(nvim)
       cy.contains(nvim.dir.contents["file2.txt"].name)
 
-      // search for the file in yazi. This focuses the file in yazi
-      cy.typeIntoTerminal(`gg/${nvim.dir.contents["file2.txt"].name}{enter}`)
-      cy.typeIntoTerminal("{esc}") // hide the search highlight
-      isFileSelectedInYazi("file2.txt" satisfies MyTestDirectoryFile)
+      hoverFileAndVerifyItsHovered(nvim, "file2.txt")
       cy.typeIntoTerminal("{enter}")
 
       // the file content should now be visible
@@ -90,15 +99,17 @@ describe("opening files", () => {
   })
 
   it("can open a file in a vertical split", () => {
-    cy.startNeovim().then((nvim) => {
+    cy.startNeovim({
+      startupScriptModifications: [
+        "add_yazi_context_assertions.lua",
+        "add_command_to_reveal_a_file.lua",
+      ],
+    }).then((nvim) => {
       cy.contains("If you see this text, Neovim is ready!")
       cy.typeIntoTerminal("{upArrow}")
+      assertYaziIsReady(nvim)
       isFileNotSelectedInYazi("file2.txt" satisfies MyTestDirectoryFile)
-      cy.typeIntoTerminal(
-        `/${"file2.txt" satisfies MyTestDirectoryFile}{enter}`,
-      )
-      cy.typeIntoTerminal("{esc}") // hide the search highlight
-      isFileSelectedInYazi("file2.txt" satisfies MyTestDirectoryFile)
+      hoverFileAndVerifyItsHovered(nvim, "file2.txt")
       cy.typeIntoTerminal("{control+v}")
 
       // yazi should now be closed
@@ -111,12 +122,17 @@ describe("opening files", () => {
   })
 
   it("can open a file in a horizontal split", () => {
-    cy.startNeovim().then((nvim) => {
+    cy.startNeovim({
+      startupScriptModifications: [
+        "add_yazi_context_assertions.lua",
+        "add_command_to_reveal_a_file.lua",
+      ],
+    }).then((nvim) => {
       cy.contains("If you see this text, Neovim is ready!")
       cy.typeIntoTerminal("{upArrow}")
-      cy.contains(nvim.dir.contents["file2.txt"].name)
-      cy.typeIntoTerminal(`/${nvim.dir.contents["file2.txt"].name}{enter}`)
-      cy.typeIntoTerminal("{esc}") // hide the search highlight
+      assertYaziIsReady(nvim)
+      isFileNotSelectedInYazi("file2.txt" satisfies MyTestDirectoryFile)
+      hoverFileAndVerifyItsHovered(nvim, "file2.txt")
       isFileSelectedInYazi(nvim.dir.contents["file2.txt"].name)
       cy.typeIntoTerminal("{control+x}")
 
@@ -131,14 +147,18 @@ describe("opening files", () => {
 
   describe("opening files in new tabs", () => {
     it("can open a file in a new tab", () => {
-      cy.startNeovim().then((nvim) => {
+      cy.startNeovim({
+        startupScriptModifications: [
+          "add_yazi_context_assertions.lua",
+          "add_command_to_reveal_a_file.lua",
+        ],
+      }).then((nvim) => {
         cy.contains("If you see this text, Neovim is ready!")
+
         cy.typeIntoTerminal("{upArrow}")
-        isFileNotSelectedInYazi(nvim.dir.contents["file2.txt"].name)
-        cy.contains(nvim.dir.contents["file2.txt"].name)
-        cy.typeIntoTerminal(`/${nvim.dir.contents["file2.txt"].name}{enter}`)
-        cy.typeIntoTerminal("{esc}") // hide the search highlight
-        isFileSelectedInYazi(nvim.dir.contents["file2.txt"].name)
+        assertYaziIsReady(nvim)
+
+        hoverFileAndVerifyItsHovered(nvim, "file2.txt")
         cy.typeIntoTerminal("{control+t}")
 
         // yazi should now be closed
@@ -189,12 +209,18 @@ describe("opening files", () => {
   })
 
   it("can send file names to the quickfix list", () => {
-    cy.startNeovim({ filename: "file2.txt" }).then((nvim) => {
+    cy.startNeovim({
+      filename: "file2.txt",
+      startupScriptModifications: [
+        "add_yazi_context_assertions.lua",
+        "add_command_to_reveal_a_file.lua",
+      ],
+    }).then((nvim) => {
       cy.contains("Hello")
       cy.typeIntoTerminal("{upArrow}")
 
       // wait for yazi to open
-      cy.contains(nvim.dir.contents["file2.txt"].name)
+      assertYaziIsReady(nvim)
 
       // file2.txt should be selected
       isFileSelectedInYazi("file2.txt" satisfies MyTestDirectoryFile)
@@ -242,7 +268,7 @@ describe("opening files", () => {
       // open yazi. It should open two tabs, one for each file in the quickfix
       // list
       cy.typeIntoTerminal("{upArrow}")
-      cy.contains("NOR")
+      cy.contains(yaziNormalModeText)
 
       isFileSelectedInYazi("file2.txt" satisfies MyTestDirectoryFile)
       isFileNotSelectedInYazi("file3.txt" satisfies MyTestDirectoryFile)
@@ -287,9 +313,12 @@ describe("opening files", () => {
     })
 
     it("can rename a buffer that's open in Neovim", () => {
-      cy.startNeovim().then((nvim) => {
+      cy.startNeovim({
+        startupScriptModifications: ["add_yazi_context_assertions.lua"],
+      }).then((nvim) => {
         cy.contains("If you see this text, Neovim is ready!")
         cy.typeIntoTerminal("{upArrow}")
+        assertYaziIsReady(nvim)
         isFileNotSelectedInYazi("file2.txt" satisfies MyTestDirectoryFile)
         // select only the current file to make the test easier
         cy.typeIntoTerminal("v")
@@ -314,7 +343,7 @@ describe("opening files", () => {
         cy.typeIntoTerminal("q")
 
         // the file should now be renamed - ask neovim to confirm this
-        nvim.runExCommand({ command: "buffers" }).then((result) => {
+        nvim.runExCommand({ command: "buffers" }).and((result) => {
           expect(result.value).to.contain("renamed-file.txt")
         })
       })
@@ -322,28 +351,17 @@ describe("opening files", () => {
   })
 
   it("can open files with complex characters in their name", () => {
-    cy.startNeovim().then((nvim) => {
+    cy.startNeovim({
+      startupScriptModifications: [
+        "add_yazi_context_assertions.lua",
+        "add_command_to_reveal_a_file.lua",
+      ],
+    }).then((nvim) => {
       cy.contains("If you see this text, Neovim is ready!")
       cy.typeIntoTerminal("{upArrow}")
+      assertYaziIsReady(nvim)
 
-      // enter the routes/ directory
-      cy.contains("routes")
-      cy.typeIntoTerminal("/routes{enter}")
-      cy.typeIntoTerminal("{rightArrow}")
-      cy.contains(
-        nvim.dir.contents.routes.contents["posts.$postId"].contents["route.tsx"]
-          .name,
-      ) // file in the directory
-
-      // enter routes/posts.$postId/
-      cy.typeIntoTerminal("{rightArrow}")
-
-      // select route.tsx
-      cy.typeIntoTerminal(
-        `/${nvim.dir.contents.routes.contents["posts.$postId"].contents["route.tsx"].name}{enter}`,
-      )
-
-      // open the file
+      hoverFileAndVerifyItsHovered(nvim, "routes/posts.$postId/route.tsx")
       cy.typeIntoTerminal("{enter}")
 
       // close yazi just to be sure the file preview is not found instead
@@ -362,35 +380,20 @@ describe("opening files", () => {
     // the copied path should be relative to the file/directory yazi was
     // started in (the initial file)
 
-    cy.startNeovim().then((nvim) => {
+    cy.startNeovim({
+      startupScriptModifications: [
+        "add_yazi_context_assertions.lua",
+        "add_command_to_reveal_a_file.lua",
+      ],
+    }).then((nvim) => {
       cy.contains("If you see this text, Neovim is ready!")
 
       cy.typeIntoTerminal("{upArrow}")
-      isFileNotSelectedInYazi("file2.txt" satisfies MyTestDirectoryFile)
-
-      // enter another directory and select a file
-      cy.typeIntoTerminal("/routes{enter}")
-      cy.contains("posts.$postId")
-      cy.typeIntoTerminal("{rightArrow}")
-      cy.contains(
-        nvim.dir.contents.routes.contents["posts.$postId"].contents["route.tsx"]
-          .name,
-      ) // file in the directory
-      cy.typeIntoTerminal("{rightArrow}")
-      cy.typeIntoTerminal(
-        `/${
-          nvim.dir.contents.routes.contents["posts.$postId"].contents[
-            "adjacent-file.txt"
-          ].name
-        }{enter}{esc}`,
-        // esc to hide the search highlight
+      assertYaziIsReady(nvim)
+      hoverFileAndVerifyItsHovered(
+        nvim,
+        "routes/posts.$postId/adjacent-file.txt",
       )
-      isFileSelectedInYazi(
-        nvim.dir.contents.routes.contents["posts.$postId"].contents[
-          "adjacent-file.txt"
-        ].name,
-      )
-
       // the file contents should now be visible
       cy.contains("this file is adjacent-file.txt")
 
@@ -420,23 +423,27 @@ describe("opening files", () => {
     // similarly, the copied path should be relative to the file/directory yazi
     // was started in (the initial file)
 
-    cy.startNeovim().then((nvim) => {
+    cy.startNeovim({
+      startupScriptModifications: [
+        "add_yazi_context_assertions.lua",
+        "add_command_to_reveal_a_file.lua",
+      ],
+    }).then((nvim) => {
       cy.contains("If you see this text, Neovim is ready!")
 
       cy.typeIntoTerminal("{upArrow}")
+      assertYaziIsReady(nvim)
       cy.contains(nvim.dir.contents["file2.txt"].name)
 
       // enter another directory and select a file
-      cy.typeIntoTerminal("/routes{enter}")
-      cy.contains("posts.$postId")
-      cy.typeIntoTerminal("{rightArrow}")
-      cy.contains(
-        nvim.dir.contents.routes.contents["posts.$postId"].contents["route.tsx"]
-          .name,
-      ) // file in the directory
-      cy.typeIntoTerminal("{rightArrow}")
+      hoverFileAndVerifyItsHovered(
+        nvim,
+        "routes/posts.$postId/adjacent-file.txt",
+      )
+      // select all files
       cy.typeIntoTerminal("{control+a}")
 
+      // copy the relative paths to the selected files
       cy.typeIntoTerminal("{control+y}")
 
       // yazi should now be closed
@@ -540,15 +547,23 @@ describe("opening files from visual mode", () => {
   })
 
   it("can open a relative file", () => {
-    cy.startNeovim({ filename: "dir with spaces/file1.txt" }).then((nvim) => {
+    cy.startNeovim({
+      filename: "dir with spaces/file1.txt",
+      startupScriptModifications: [
+        "add_yazi_context_assertions.lua",
+        "add_command_to_reveal_a_file.lua",
+      ],
+    }).then((nvim) => {
       cy.contains("this is the first file")
 
       // enter a relative file path
       cy.typeIntoTerminal("cc./file2.txt{esc}")
       cy.typeIntoTerminal("V{upArrow}")
+      assertYaziIsReady(nvim)
 
       // wait for yazi to open. it should have the correct file selected, and
       // the file's contents should be visible in the preview pane in yazi.
+      assertYaziIsHovering(nvim, "dir with spaces/file2.txt")
       cy.contains("this is the second file")
 
       // Open the file and verify that the correct file was opened.

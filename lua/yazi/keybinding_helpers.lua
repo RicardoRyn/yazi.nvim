@@ -64,6 +64,12 @@ function YaziOpenerActions.select_current_file_and_close_yazi(config, callbacks)
   callbacks.api:open()
 end
 
+---@param visible_buffer YaziVisibleBuffer
+local function show_visible_buffer(visible_buffer)
+  local renameable_buffer = visible_buffer.renameable_buffer
+  return renameable_buffer.path:make_relative(vim.uv.cwd())
+end
+
 ---@param _config YaziConfig
 ---@param context YaziActiveContext
 ---@diagnostic disable-next-line: unused-local
@@ -71,9 +77,6 @@ function YaziOpenerActions.cycle_open_buffers(_config, context)
   assert(context.input_path, "No input path found")
   assert(context.input_path.filename, "No input path filename found")
 
-  local current_cycle_position = (
-    context.cycled_file and context.cycled_file.path
-  ) or context.input_path
   local visible_buffers = utils.get_visible_open_buffers()
 
   if #visible_buffers == 0 then
@@ -86,53 +89,104 @@ function YaziOpenerActions.cycle_open_buffers(_config, context)
     return
   end
 
-  for i, buffer in ipairs(visible_buffers) do
-    if
-      buffer.renameable_buffer:matches_exactly(current_cycle_position.filename)
-    then
-      Log:debug(
-        string.format(
-          'Found buffer for path: "%s", will open the next buffer',
-          context.input_path
-        )
+  Log:debug(
+    string.format(
+      "Looking at visible_buffers: %s",
+      vim.inspect(vim.tbl_map(show_visible_buffer, visible_buffers))
+    )
+  )
+
+  ---@type YaziVisibleBuffer | nil
+  local next_buffer = nil
+
+  -- find out what the currently highlighted buffer is, and what is the next
+  -- buffer to be highlighted
+  local current_cycle_position = (
+    context.cycled_file and context.cycled_file.path
+  )
+  if not current_cycle_position and context.input_path:is_dir() then
+    Log:debug(
+      string.format(
+        'No current cycle position found for path: "%s" (%s), so will use the first buffer "%s".',
+        context.input_path,
+        vim.inspect(current_cycle_position),
+        show_visible_buffer(visible_buffers[1])
       )
-      local other_buffers = vim.list_slice(visible_buffers, i + 1)
-      other_buffers = vim.list_extend(other_buffers, visible_buffers, 1, i - 1)
-      local next_buffer = vim.iter(other_buffers):find(function(b)
-        return b.renameable_buffer.path.filename
-          ~= current_cycle_position.filename
-      end)
+    )
 
-      if #visible_buffers == 1 then
-        next_buffer = buffer
-      end
+    next_buffer = visible_buffers[1]
+  elseif #visible_buffers == 1 then
+    Log:debug(
+      string.format(
+        'Only one visible buffer found for path: "%s" (current_cycle_position %s), so will use the first buffer "%s".',
+        context.input_path,
+        vim.inspect(current_cycle_position),
+        show_visible_buffer(visible_buffers[1])
+      )
+    )
+    next_buffer = visible_buffers[1]
+  else
+    local current = (
+      current_cycle_position and current_cycle_position:absolute()
+    ) or context.input_path:absolute()
+    assert(current, "No current cycle position found")
 
-      if not next_buffer then
+    for i, buffer in ipairs(visible_buffers) do
+      if buffer.renameable_buffer:matches_exactly(current) then
+        local other_buffers = vim.list_slice(visible_buffers, i + 1)
+        other_buffers =
+          vim.list_extend(other_buffers, visible_buffers, 1, i - 1)
+        next_buffer = vim.iter(other_buffers):find(function(b)
+          ---@cast b YaziVisibleBuffer
+          local this = b.renameable_buffer.path:absolute()
+          return this ~= current
+        end)
+
         Log:debug(
           string.format(
-            'Could not find next buffer for path: "%s".',
-            context.input_path
+            "Current cycled buffer: %s (index %s), next buffer: %s",
+            show_visible_buffer(buffer),
+            i,
+            show_visible_buffer(next_buffer)
           )
         )
-        return
+        break
       end
-
-      local nextfile = next_buffer.renameable_buffer.path.filename
-
-      -- make sure the type is a string, because plenary thinks it is `string|unknown`
-      assert(type(nextfile) == "string", "Expected filename to be a string")
-      context.api:reveal(nextfile)
-      context.cycled_file = next_buffer.renameable_buffer
-      return
     end
+  end
+
+  if not next_buffer then
+    Log:debug(
+      string.format(
+        'Could not find next buffer for path: "%s".',
+        context.input_path
+      )
+    )
+    return
+  end
+
+  local nextfile = next_buffer.renameable_buffer.path.filename
+  if not nextfile then
+    Log:debug(
+      string.format(
+        'Could not find cycle_open_buffers for path: "%s"',
+        context.input_path
+      )
+    )
+    return
   end
 
   Log:debug(
     string.format(
-      'Could not find cycle_open_buffers for path: "%s"',
-      context.input_path
+      'Found buffer for path: "%s", will reveal the next buffer: "%s"',
+      context.input_path,
+      nextfile
     )
   )
+
+  -- make sure the type is a string, because plenary thinks it is `string|unknown`
+  context.api:reveal(next_buffer.renameable_buffer.path:absolute())
+  context.cycled_file = next_buffer.renameable_buffer
 end
 
 ---@param config YaziConfig
@@ -287,6 +341,32 @@ function YaziOpenerActions.change_working_directory(context)
     vim.notify('cwd changed to "' .. last_directory .. '"')
     vim.cmd({ cmd = "cd", args = { last_directory } })
   end
+end
+
+---@param config YaziConfig
+---@param context YaziActiveContext
+function YaziOpenerActions.open_and_pick_window(config, context)
+  YaziOpenerActions.select_current_file_and_close_yazi(config, {
+    api = context.api,
+    on_file_opened = function(chosen_file, _, _)
+      if config.integrations.pick_window_implementation ~= "snacks.picker" then
+        require("yazi.log"):debug(
+          string.format(
+            "snacks_picker integration is unexpected (%s). Cannot pick window.",
+            vim.inspect(config.integrations.pick_window_implementation)
+          )
+        )
+        return
+      end
+
+      local snacks_picker_util = require("snacks.picker.util")
+      local picked_win_id = snacks_picker_util.pick_win()
+      if picked_win_id and vim.api.nvim_win_is_valid(picked_win_id) then
+        vim.api.nvim_set_current_win(picked_win_id)
+        require("yazi.openers").open_file(chosen_file)
+      end
+    end,
+  })
 end
 
 return YaziOpenerActions

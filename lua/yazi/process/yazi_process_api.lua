@@ -15,24 +15,36 @@ function YaziProcessApi.new(config, yazi_id)
   return self
 end
 
+--- Emit a command to the yazi process.
+--- https://yazi-rs.github.io/docs/dds#ya-emit
+---@param args string[]
+---@return vim.SystemObj
+function YaziProcessApi:emit_to_yazi(args)
+  require("yazi.log"):debug(
+    string.format(
+      "Using 'ya emit-to %s' with args: '%s'",
+      self.yazi_id,
+      vim.inspect(args)
+    )
+  )
+  return vim.system(
+    { "ya", "emit-to", self.yazi_id, unpack(args) },
+    { timeout = 1000 }
+  )
+end
+
 --- Tell yazi to focus (hover on) the given path.
----@see https://yazi-rs.github.io/docs/configuration/keymap#manager.reveal
+--- https://yazi-rs.github.io/docs/configuration/keymap#manager.reveal
 ---@param path string
 ---@return vim.SystemObj
 function YaziProcessApi:reveal(path)
-  require("yazi.log"):debug(
-    string.format("Using ya to reveal path: '%s'", path)
-  )
-  return vim.system(
-    { "ya", "emit-to", self.yazi_id, "reveal", "--str", path },
-    { timeout = 1000 }
-  )
+  return self:emit_to_yazi({ "reveal", "--str", path })
 end
 
 --- Tell yazi to open the currently selected file(s).
 ---@see https://yazi-rs.github.io/docs/configuration/keymap#manager.open
 function YaziProcessApi:open()
-  vim.system({ "ya", "emit-to", self.yazi_id, "open" }, { timeout = 1000 })
+  self:emit_to_yazi({ "open" })
 end
 
 return YaziProcessApi

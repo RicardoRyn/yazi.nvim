@@ -1,5 +1,10 @@
-import { isHoveredInNeovim, isNotHoveredInNeovim } from "./utils/hover-utils"
-import { yaziText } from "./utils/yazi-utils"
+import {
+  assertYaziIsHovering,
+  hoverFileAndVerifyItsHovered,
+  isHoveredInNeovim,
+  isNotHoveredInNeovim,
+} from "./utils/hover-utils"
+import { assertYaziIsReady } from "./utils/yazi-utils"
 
 // The yazi keymappings need to be defined in the yazi config. The test
 // environment contains the mapping in the .config/yazi/keymap.toml file
@@ -27,9 +32,10 @@ describe("revealing another open split (buffer) in yazi", () => {
         ],
       },
       startupScriptModifications: [
+        "add_yazi_context_assertions.lua",
         "modify_yazi_config_and_add_hovered_buffer_background.lua",
       ],
-    }).then((_nvim) => {
+    }).then((nvim) => {
       // sanity check to make sure the files are open
       cy.contains(view.leftFile.text)
       cy.contains(view.centerFile.text)
@@ -43,7 +49,7 @@ describe("revealing another open split (buffer) in yazi", () => {
 
       // start yazi and wait for it to be visible
       cy.typeIntoTerminal("{upArrow}")
-      cy.contains(yaziText)
+      assertYaziIsReady(nvim)
 
       // Switch to the other buffers' directories in yazi. This should make
       // yazi send a hover event for the new, highlighted file.
@@ -68,6 +74,47 @@ describe("revealing another open split (buffer) in yazi", () => {
       isNotHoveredInNeovim(view.leftFile.text)
       isHoveredInNeovim(view.centerFile.text)
       isNotHoveredInNeovim(view.rightFile.text)
+    })
+  })
+
+  it(`"NvimCycleBuffer" works for only one split`, () => {
+    cy.startNeovim({
+      filename: "initial-file.txt",
+      startupScriptModifications: [
+        "add_yazi_context_assertions.lua",
+        "modify_yazi_config_and_add_hovered_buffer_background.lua",
+        "add_command_to_reveal_a_file.lua",
+      ],
+    }).then((nvim) => {
+      cy.contains("If you see this text, Neovim is ready!")
+
+      // start yazi and wait for it to be visible
+      cy.typeIntoTerminal("{upArrow}")
+      assertYaziIsReady(nvim)
+
+      // focus another file
+      hoverFileAndVerifyItsHovered(nvim, "highlights/file_2.txt")
+
+      cy.typeIntoTerminal("I")
+      assertYaziIsHovering(nvim, "initial-file.txt")
+    })
+  })
+
+  it(`can use the "on_yazi_ready" hook to run code after yazi is ready`, () => {
+    cy.startNeovim({
+      filename: "initial-file.txt",
+      startupScriptModifications: [
+        "add_yazi_context_assertions.lua",
+        "add_keybinding_to_start_yazi_and_find.lua",
+      ],
+    }).then((nvim) => {
+      cy.contains("If you see this text, Neovim is ready!")
+
+      // start yazi and wait for it to be visible
+      cy.typeIntoTerminal(" r")
+      assertYaziIsReady(nvim)
+
+      cy.contains("Find next:")
     })
   })
 })

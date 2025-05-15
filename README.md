@@ -51,8 +51,10 @@ Neovim.
     technical explanation is available
     [here](documentation/for-developers/lsp-renaming.md).
 - Customizable keybindings
-- 🆕 Plugin management for Yazi plugins and flavors
+- Plugin management for Yazi plugins and flavors
   ([documentation](./documentation/plugin-management.md))
+- 🆕 Send custom commands to yazi
+  ([documentation](./documentation/emitting-commands-to-yazi.md))
 
 For previewing images with yazi, see Yazi's documentation related to Neovim
 [here](https://yazi-rs.github.io/docs/image-preview/#neovim).
@@ -61,7 +63,7 @@ For previewing images with yazi, see Yazi's documentation related to Neovim
 
 First, make sure you have the requirements:
 
-- Neovim 0.10.2 or later (nightly)
+- Neovim 0.11.0 or later (nightly)
 - yazi [0.4.0](https://github.com/sxyazi/yazi/releases/tag/v0.4.0) or later
 - New features might require a recent version of yazi (see
   [installing-yazi-from-source.md](documentation/installing-yazi-from-source.md))
@@ -180,6 +182,8 @@ These are the default keybindings that are available when yazi is open:
       limited to those only
   - `<c-y>`: copy the relative path of the selected file(s) to the clipboard.
     Requires GNU `realpath` or `grealpath` on OSX
+    - also available for the snacks.nvim picker, see
+      [here](documentation/copy-relative-path-to-files.md) for more information
   - `<tab>`: make yazi jump to the open buffers in Neovim. See
     [#232](https://github.com/mikavilpas/yazi.nvim/pull/232) for more
     information
@@ -273,6 +277,7 @@ return {
       copy_relative_path_to_selected_files = "<c-y>",
       send_to_quickfix_list = "<c-q>",
       change_working_directory = "<c-\\>",
+      open_and_pick_window = "<c-o>",
     },
 
     -- completely override the keymappings for yazi. This function will be
@@ -312,28 +317,41 @@ return {
       grep_in_directory = function(directory)
         -- the default implementation uses telescope if available, otherwise nothing
       end,
+
       grep_in_selected_files = function(selected_files)
         -- similar to grep_in_directory, but for selected files
       end,
+
       --- Similarly, search and replace in the files in the directory
       replace_in_directory = function(directory)
         -- default: grug-far.nvim
       end,
+
       replace_in_selected_files = function(selected_files)
         -- default: grug-far.nvim
       end,
+
       -- `grealpath` on OSX, (GNU) `realpath` otherwise
       resolve_relative_path_application = "",
+
+      -- how to delete (close) a buffer. Defaults to `snacks.bufdelete` from
+      -- https://github.com/folke/snacks.nvim, which maintains the window
+      -- layout.
+      bufdelete_implementation = "snacks-if-available",
+
+      -- add an action to a file picker to copy the relative path to the
+      -- selected file(s). The implementation is the same as for the
+      -- `copy_relative_path_to_selected_files` yazi.nvim keymap. Currently
+      -- only snacks.nvim is supported. Documentation can be found in the
+      -- keybindings section of the readme.
+      --
+      -- available options:
+      -- - nil (default, no action added)
+      -- - "snacks.picker" (snacks.nvim)
+      picker_add_copy_relative_path_action = nil,
     },
 
     future_features = {
-      -- Neovim nightly 0.11 has deprecated `termopen` in favor of `jobstart`
-      -- (https://github.com/neovim/neovim/pull/31343). By default on nightly,
-      -- this option is `false` and `jobstart` is used. Some users have
-      -- reported issues with this, and can set this to `true` to keep using
-      -- the old `termopen` for the time being.
-      nvim_0_10_termopen_fallback = false,
-
       -- By default, this is `true`, which means yazi.nvim processes events
       -- before yazi has been closed. If this is `false`, events are processed
       -- in a batch when the user closes yazi. If this is `true`, events are
@@ -358,15 +376,12 @@ Yazi is highly customizable. It features its own plugin and event system,
 themes, and keybindings. This section lists some of the plugins and themes that
 I like.
 
-- <https://gitee.com/DreamMaoMao/easyjump.yazi.git> allows jumping to a line by
+- <https://github.com/DreamMaoMao/easyjump.yazi> allows jumping to a line by
   typing a hint character, much like
-  [hop.nvim](https://github.com/smoka7/hop.nvim). A GitHub mirror is available
-  [here](https://github.com/mikavilpas/easyjump.yazi) to work around
-  [this yazi issue](https://github.com/sxyazi/yazi/pull/1718) for the time
-  being.
+  [hop.nvim](https://github.com/smoka7/hop.nvim).
 - <https://github.com/Rolv-Apneseth/starship.yazi> is a port of the
-  [starship prompt](https://starship.rs) to yazi. It allows reusing the prompt
-  you are using in your shell in yazi.
+  [starship prompt](https://starship.rs) to yazi. It allows reusing the starship
+  prompt you are using in your shell in yazi.
 - <https://github.com/yazi-rs/flavors> houses many of the most popular themes as
   yazi flavors, check it out! They typically also include matching code
   highlighting.

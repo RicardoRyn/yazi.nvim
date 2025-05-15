@@ -52,6 +52,18 @@ export const MyTestDirectorySchema = z.object({
           name: z.literal("add_command_to_count_open_buffers.lua"),
           type: z.literal("file"),
         }),
+        "add_command_to_reveal_a_file.lua": z.object({
+          name: z.literal("add_command_to_reveal_a_file.lua"),
+          type: z.literal("file"),
+        }),
+        "add_keybinding_to_start_yazi_and_find.lua": z.object({
+          name: z.literal("add_keybinding_to_start_yazi_and_find.lua"),
+          type: z.literal("file"),
+        }),
+        "add_yazi_context_assertions.lua": z.object({
+          name: z.literal("add_yazi_context_assertions.lua"),
+          type: z.literal("file"),
+        }),
         "disable_a_keybinding.lua": z.object({
           name: z.literal("disable_a_keybinding.lua"),
           type: z.literal("file"),
@@ -248,6 +260,9 @@ export const testDirectoryFiles = z.enum([
   ".config/yazi",
   ".config",
   "config-modifications/add_command_to_count_open_buffers.lua",
+  "config-modifications/add_command_to_reveal_a_file.lua",
+  "config-modifications/add_keybinding_to_start_yazi_and_find.lua",
+  "config-modifications/add_yazi_context_assertions.lua",
   "config-modifications/disable_a_keybinding.lua",
   "config-modifications/modify_yazi_config_and_add_hovered_buffer_background.lua",
   "config-modifications/modify_yazi_config_and_highlight_buffers_in_same_directory.lua",

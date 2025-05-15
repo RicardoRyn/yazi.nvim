@@ -23,9 +23,9 @@
 ---@field public highlight_hovered_buffers_in_same_directory? boolean "highlight buffers in the same directory as the hovered buffer"
 ---@field public forwarded_dds_events? string[] "Yazi events to listen to. These are published as neovim autocmds so that the user can set up custom handlers for themselves. Defaults to `nil`."
 ---@field public future_features? yazi.OptInFeatures # Features that are not yet stable, but can be tested by the user. These features might change or be removed in the future. They may also become built-in features that are on by default, making it unnecessary to opt into using them.
+---@field public config_home? string # optional path for nvim yazi to find a custom yazi.toml
 
 ---@class(exact) yazi.OptInFeatures
----@field use_nvim_0_10_termopen? boolean # Neovim nightly 0.11 has deprecated `termopen` in favor of `jobstart` (https://github.com/neovim/neovim/pull/31343). By default on nightly, this option is `false` and `jobstart` is used. Some users have reported issues with this, and can set this to `true` to keep using the old `termopen` for the time being.
 ---@field process_events_live? boolean # By default, this is `true`, which means yazi.nvim processes events before yazi has been closed. If this is `false`, events are processed in a batch when the user closes yazi. If this is `true`, events are processed immediately.
 
 ---@alias YaziKeymap string | false # `string` is a keybinding such as "<c-tab>", false means the keybinding is disabled
@@ -41,6 +41,7 @@
 ---@field copy_relative_path_to_selected_files? YaziKeymap # Copy the relative paths of the selected files to the clipboard
 ---@field send_to_quickfix_list? YaziKeymap # Send the selected files to the quickfix list for later processing
 ---@field change_working_directory? YaziKeymap # Change working directory to the directory opened by yazi
+---@field open_and_pick_window? YaziKeymap # Pick a window to open the file in
 
 ---@class (exact) YaziActiveContext # context state for a single yazi session
 ---@field api YaziProcessApi
@@ -50,6 +51,7 @@
 
 ---@class (exact) YaziConfigHooks
 ---@field public yazi_opened fun(preselected_path: string | nil, buffer: integer, config: YaziConfig):nil
+---@field public on_yazi_ready fun(buffer: integer, config: YaziConfig, process_api: YaziProcessApi):nil
 ---@field public yazi_closed_successfully fun(chosen_file: string | nil, config: YaziConfig, state: YaziClosedState): nil
 ---@field public yazi_opened_multiple_files fun(chosen_files: string[], config: YaziConfig, state: YaziClosedState): nil
 
@@ -59,12 +61,19 @@
 ---@field public replace_in_directory? fun(directory: Path, selected_files?: Path[]): nil # called to start a replacement operation on some directory; by default uses grug-far.nvim
 ---@field public replace_in_selected_files? fun(selected_files?: Path[]): nil # called to start a replacement operation on files that were selected in yazi; by default uses grug-far.nvim
 ---@field public resolve_relative_path_application? string # the application that will be used to resolve relative paths. By default, this is GNU `realpath` on Linux and `grealpath` on macOS
+---@field public bufdelete_implementation? YaziBufdeleteImpl # how to delete (close) a buffer. Defaults to `snacks.bufdelete` from https://github.com/folke/snacks.nvim, which maintains the window layout.
+---@field public picker_add_copy_relative_path_action? "snacks.picker" # add an action to a file picker to copy the relative path to the selected file(s). The implementation is the same as for the `copy_relative_path_to_selected_files` yazi.nvim keymap. Currently only snacks.nvim is supported. Documentation can be found in the keybindings section of the readme. The default is `nil`, which means no action is added.
+---@field public pick_window_implementation? "snacks.picker" # the implementation to use for picking a window. The default is `snacks.picker`, which uses the snacks.nvim picker's "pick_win" action.
+
+---@alias YaziBufdeleteImpl
+---| "snacks-if-available" # the implementation from https://github.com/folke/snacks.nvim, which maintains the window layout. If not available, falls back to the builtin implementation in `vim.api.nvim_buf_delete()`, which does not maintain the window layout.
+---| fun(bufnr: integer) # a custom implementation provided by the user
 
 ---@class (exact) YaziConfigHighlightGroups # Defines the highlight groups that will be used in yazi
 ---@field public hovered_buffer? vim.api.keyset.highlight # the color of a buffer that is hovered over in yazi
 ---@field public hovered_buffer_in_same_directory? vim.api.keyset.highlight # the color of a buffer that is in the same directory as the hovered buffer
 
----@alias YaziEvent YaziRenameEvent | YaziMoveEvent | YaziDeleteEvent | YaziTrashEvent | YaziChangeDirectoryEvent | YaziHoverEvent | YaziBulkEvent | YaziCustomDDSEvent | YaziNvimCycleBufferEvent
+---@alias YaziEvent YaziRenameEvent | YaziMoveEvent | YaziDeleteEvent | YaziTrashEvent | YaziChangeDirectoryEvent | YaziHoverEvent | YaziBulkEvent | YaziCustomDDSEvent | YaziNvimCycleBufferEvent | YaziHeyEvent
 
 ---@class (exact) YaziPreviousState # describes the previous state of yazi when it was closed; the last known state
 ---@field public last_hovered? string
@@ -105,6 +114,10 @@
 ---@field public yazi_id string
 ---@field public type "hover"
 ---@field public url string
+
+---@class (exact) YaziHeyEvent
+---@field public yazi_id string
+---@field public type "hey"
 
 ---@class (exact) YaziBulkEvent "Like `rename` and `move` but for bulk renaming"
 ---@field public type "bulk"

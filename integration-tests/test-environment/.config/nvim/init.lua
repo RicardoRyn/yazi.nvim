@@ -65,6 +65,7 @@ local plugins = {
       future_features = {},
       integrations = {
         grep_in_directory = "telescope",
+        picker_add_copy_relative_path_action = "snacks.picker",
       },
     },
   },
@@ -82,12 +83,37 @@ local plugins = {
   { "ibhagwan/fzf-lua" },
   { "catppuccin/nvim", name = "catppuccin", priority = 1000 },
   { "https://github.com/MagicDuck/grug-far.nvim", opts = {} },
-  { "folke/snacks.nvim", opts = {} },
+  {
+    "folke/snacks.nvim",
+    priority = 1000,
+    lazy = false,
+    ---@type snacks.Config
+    opts = {
+      picker = {
+        win = {
+          input = {
+            keys = {
+              ["<C-y>"] = { "yazi_copy_relative_path", mode = { "n", "i" } },
+            },
+          },
+        },
+      },
+    },
+    keys = {
+      {
+        "<leader><space>",
+        function()
+          Snacks.picker.smart()
+        end,
+        desc = "Smart Find Files",
+      },
+    },
+  },
   {
     "neovim/nvim-lspconfig",
     dependencies = {
-      { "williamboman/mason.nvim", opts = {} },
-      { "williamboman/mason-lspconfig.nvim", opts = {} },
+      { "williamboman/mason.nvim", version = "^1.0.0", opts = {} },
+      { "williamboman/mason-lspconfig.nvim", version = "^1.0.0", opts = {} },
     },
     config = function()
       ---@diagnostic disable-next-line: missing-fields
@@ -104,3 +130,11 @@ local plugins = {
 require("lazy").setup({ spec = plugins })
 
 vim.cmd.colorscheme("catppuccin-macchiato")
+do
+  local colors = require("catppuccin.palettes").get_palette("macchiato")
+  vim.api.nvim_set_hl(
+    0,
+    "SnacksPickerPickWin",
+    { bg = colors.peach, fg = "#000000" }
+  )
+end

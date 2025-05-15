@@ -4,11 +4,13 @@ local configModule = require("yazi.config")
 
 local M = {}
 
-M.version = "10.1.0" -- x-release-please-version
+M.version = "11.4.0" -- x-release-please-version
 
 -- The last known state of yazi when it was closed
 ---@type YaziPreviousState
 M.previous_state = {}
+
+M.active_contexts = vim.ringbuf(2)
 
 ---@alias yazi.Arguments {reveal_path: string}
 
@@ -49,51 +51,66 @@ function M.yazi(config, input_path, args)
 
   local win = require("yazi.window").YaziFloatingWindow.new(config)
   win:open_and_display()
+  local yazi_buffer = win.content_buffer
 
   local yazi_process, yazi_context = YaziProcess:start(config, paths, {
-    on_maybe_started = function(yazi)
-      if not (args and args.reveal_path) then
-        return
-      end
+    on_ya_first_event = function(api)
+      config.hooks.on_yazi_ready(yazi_buffer, config, api)
+      do
+        if not (args and args.reveal_path) then
+          Log:debug("No reveal_path provided, skipping initial reveal")
+          return
+        end
 
-      local retries_remaining = 5
-      local function try()
-        local success = pcall(function()
-          local result = yazi.api:reveal(args.reveal_path)
-          local completed = result:wait(500)
-          assert(completed.code == 0)
-          Log:debug(
-            string.format(
-              "Revealed path '%s' successfully after retries_remaining: %s",
-              args.reveal_path,
-              retries_remaining
-            )
-          )
-        end)
-        if not success then
-          retries_remaining = retries_remaining - 1
-          if retries_remaining == 0 then
-            Log:debug(
+        local retries = 15
+        require("yazi.process.retry").retry({
+          delay = 50,
+          retries = retries,
+          action = function(retries_remaining)
+            local reveal_job = api:reveal(args.reveal_path)
+            local completed = reveal_job:wait(500)
+            assert(
+              completed.code == 0,
               string.format(
-                "Failed to reveal path '%s' after 5 retries",
-                args.reveal_path
+                "Failed to reveal path '%s' with exit code: %s, details: %s",
+                args.reveal_path,
+                completed.code,
+                vim.inspect({
+                  stdout = completed.stdout,
+                  stderr = completed.stderr,
+                })
               )
             )
-            return
-          end
-
-          Log:debug(
-            string.format(
-              "Failed to reveal path '%s', retrying after 50ms. retries_remaining: %s",
-              args.reveal_path,
-              retries_remaining
+            Log:debug(
+              string.format(
+                "Revealed path '%s' successfully after retries_remaining: %s",
+                args.reveal_path,
+                retries_remaining
+              )
             )
-          )
-          vim.defer_fn(try, 50)
-        end
+            return nil
+          end,
+          on_failure = function(_, retries_remaining)
+            Log:debug(
+              string.format(
+                "Failed to reveal path '%s', retrying after 50ms. retries_remaining: %s",
+                args.reveal_path,
+                retries_remaining
+              )
+            )
+          end,
+          on_final_failure = function(result)
+            Log:debug(
+              string.format(
+                "Failed to reveal path '%s' after %s retries. Details: %s",
+                args.reveal_path,
+                retries,
+                vim.inspect(result)
+              )
+            )
+          end,
+        })
       end
-
-      try()
     end,
     on_exit = function(
       exit_code,
@@ -140,6 +157,13 @@ function M.yazi(config, input_path, args)
         else
           last_directory = path
         end
+        Log:debug(
+          string.format(
+            "No last_directory provided, presuming the last directory is %s based on the path %s",
+            last_directory,
+            path.filename
+          )
+        )
       end
 
       Log:debug(
@@ -155,13 +179,25 @@ function M.yazi(config, input_path, args)
         -- https://github.com/sxyazi/yazi/issues/1314 so let's try to at least
         -- not corrupt the last working hovered state
         M.previous_state.last_hovered = hovered_url
+        Log:debug(
+          string.format(
+            "Setting the last hovered state to %s",
+            vim.inspect(M.previous_state.last_hovered)
+          )
+        )
+      else
+        Log:debug(
+          "No hovered_url provided, presuming the last hovered file is the initial file"
+        )
+        M.previous_state.last_hovered = path.filename
       end
     end,
   })
 
+  M.active_contexts:push(yazi_context)
+
   config.hooks.yazi_opened(path.filename, win.content_buffer, config)
 
-  local yazi_buffer = win.content_buffer
   if config.set_keymappings_function ~= nil then
     config.set_keymappings_function(yazi_buffer, config, yazi_context)
   end
@@ -223,6 +259,13 @@ function M.setup(opts)
   if M.config.open_for_directories == true then
     Log:debug("Hijacking netrw to open yazi for directories")
     require("yazi.hijack_netrw").hijack_netrw(yazi_augroup)
+  end
+
+  if
+    M.config.integrations.picker_add_copy_relative_path_action
+    == "snacks.picker"
+  then
+    require("yazi.integrations.snacks_relative_path").setup_copy_relative_path_picker_action()
   end
 end
 

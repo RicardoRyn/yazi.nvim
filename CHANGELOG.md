@@ -1,5 +1,91 @@
 # Changelog
 
+## [11.4.0](https://github.com/mikavilpas/yazi.nvim/compare/v11.3.0...v11.4.0) (2025-05-14)
+
+
+### Features
+
+* add option for nvim yazi to use a custom config file  ([#957](https://github.com/mikavilpas/yazi.nvim/issues/957)) ([fc77617](https://github.com/mikavilpas/yazi.nvim/commit/fc77617ae40a360dad5bb253300d96aa5013ba11))
+
+## [11.3.0](https://github.com/mikavilpas/yazi.nvim/compare/v11.2.0...v11.3.0) (2025-05-11)
+
+
+### Features
+
+* **opt-out:** `open_and_pick_window` (`<c-o>`) using snacks.nvim ([#952](https://github.com/mikavilpas/yazi.nvim/issues/952)) ([9a6d334](https://github.com/mikavilpas/yazi.nvim/commit/9a6d334689f4b10047acba79177616661ab1773d))
+
+## [11.2.0](https://github.com/mikavilpas/yazi.nvim/compare/v11.1.0...v11.2.0) (2025-05-09)
+
+
+### Features
+
+* allow emitting arbitrary yazi commands after yazi is ready ([#946](https://github.com/mikavilpas/yazi.nvim/issues/946)) ([c9a8c7b](https://github.com/mikavilpas/yazi.nvim/commit/c9a8c7be76356e93aad8949710a4c82f675ee114))
+
+## [11.1.0](https://github.com/mikavilpas/yazi.nvim/compare/v11.0.3...v11.1.0) (2025-05-05)
+
+
+### Features
+
+* **snacks:** add copy relative path action to snacks.nvim picker ([#938](https://github.com/mikavilpas/yazi.nvim/issues/938)) ([07fcb3b](https://github.com/mikavilpas/yazi.nvim/commit/07fcb3b28992b58f8b51a115e35fa00ddc40bc43))
+
+## [11.0.3](https://github.com/mikavilpas/yazi.nvim/compare/v11.0.2...v11.0.3) (2025-05-03)
+
+
+### Bug Fixes
+
+* cycling buffers with `<tab>` works with only one buffer open ([#931](https://github.com/mikavilpas/yazi.nvim/issues/931)) ([4338c9e](https://github.com/mikavilpas/yazi.nvim/commit/4338c9ed1be56228b05afe143d270f4b11c3b365))
+
+## [11.0.2](https://github.com/mikavilpas/yazi.nvim/compare/v11.0.1...v11.0.2) (2025-05-02)
+
+
+### Bug Fixes
+
+* do not crash cycle buffers if only one is visible ([9be42be](https://github.com/mikavilpas/yazi.nvim/commit/9be42be7bd29b21bbb07a4ca1df3ade912766699))
+
+## [11.0.1](https://github.com/mikavilpas/yazi.nvim/compare/v11.0.0...v11.0.1) (2025-05-02)
+
+
+### Bug Fixes
+
+* not being able to cycle buffers with `tab` after `:Yazi cwd` ([#922](https://github.com/mikavilpas/yazi.nvim/issues/922)) ([9b242be](https://github.com/mikavilpas/yazi.nvim/commit/9b242bef20df648b5d08ebfb4e62e227bc059623))
+
+## [11.0.0](https://github.com/mikavilpas/yazi.nvim/compare/v10.3.0...v11.0.0) (2025-04-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove nvim-0.10 termopen fallback completely
+
+### Code Refactoring
+
+* remove nvim-0.10 termopen fallback completely ([97039da](https://github.com/mikavilpas/yazi.nvim/commit/97039da8fd75fceeaf3f62c7bd969f296abb9b76))
+
+## [10.3.0](https://github.com/mikavilpas/yazi.nvim/compare/v10.2.0...v10.3.0) (2025-04-28)
+
+
+### Features
+
+* allow overriding the buffer deletion implementation ([#909](https://github.com/mikavilpas/yazi.nvim/issues/909)) ([c82087d](https://github.com/mikavilpas/yazi.nvim/commit/c82087dfddce9c8622a2c40fb53d241c0e814c7e))
+
+## [10.2.0](https://github.com/mikavilpas/yazi.nvim/compare/v10.1.1...v10.2.0) (2025-04-28)
+
+
+### Features
+
+* **api:** allow accessing the yazi context from the lua API ([f2e480d](https://github.com/mikavilpas/yazi.nvim/commit/f2e480d35573f164870bada19343a0ef5d7d01ad))
+
+
+### Bug Fixes
+
+* make toggling yazi more reliable ([5ab0c65](https://github.com/mikavilpas/yazi.nvim/commit/5ab0c65b6b7d21ce7f75f470c6e9a4ec9ea9cb24))
+
+## [10.1.1](https://github.com/mikavilpas/yazi.nvim/compare/v10.1.0...v10.1.1) (2025-04-27)
+
+
+### Bug Fixes
+
+* don't hijack when using a protocol netrw should handle ([#906](https://github.com/mikavilpas/yazi.nvim/issues/906)) ([caa08ae](https://github.com/mikavilpas/yazi.nvim/commit/caa08ae4d568aca447fd1b06b7a4d7ed1f1cc1f4))
+
 ## [10.1.0](https://github.com/mikavilpas/yazi.nvim/compare/v10.0.2...v10.1.0) (2025-04-20)
 
 

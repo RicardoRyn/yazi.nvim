@@ -1,4 +1,8 @@
+import { flavors } from "@catppuccin/palette"
+import assert from "assert"
 import type { MyTestDirectoryFile } from "MyTestDirectory"
+import { hoverFileAndVerifyItsHovered } from "./utils/hover-utils"
+import { textIsVisibleWithBackgroundColor } from "./utils/text-utils"
 
 describe("grug-far integration (search and replace)", () => {
   beforeEach(() => {
@@ -250,6 +254,74 @@ describe("snacks.picker integration (grep)", () => {
       // snacks.picker should be open now. Don't test it for now because it
       // might be unstable. If you want to try it manually, you can verify
       // that it does not find the text in should-be-excluded-file
+    })
+  })
+
+  it("can optionally setup a keybinding to copy the relative paths to files", () => {
+    cy.visit("/")
+    cy.startNeovim({}).then((nvim) => {
+      // wait until the file contents are visible
+      cy.contains("If you see this text, Neovim is ready!")
+      cy.typeIntoTerminal("dd")
+
+      // open the snacks.picker
+      cy.typeIntoTerminal("  ")
+      cy.contains("Smart")
+
+      cy.typeIntoTerminal("dir with spaces")
+
+      // select both files
+      cy.contains("file1.txt")
+      cy.contains("file2.txt")
+      cy.typeIntoTerminal("{control+i}{control+i}")
+
+      // press the keybinding to copy the relative paths
+      cy.typeIntoTerminal("{control+y}")
+
+      // paste the contents of the clipboard into the buffer so that it's
+      // slightly easier to debug visually
+      cy.typeIntoTerminal("p")
+      cy.contains("Smart").should("not.exist")
+
+      // verify that the clipboard register contains the relative paths
+      nvim
+        .runLuaCode({ luaCode: `return vim.fn.getreg('"')` })
+        .then((result) => {
+          const value = result.value?.valueOf()
+          assert(typeof value === "string")
+          expect(value.split("\n")).to.eql([
+            "../../dir with spaces/file1.txt",
+            "../../dir with spaces/file2.txt",
+          ])
+        })
+    })
+  })
+})
+
+describe("snacks open_and_pick_window integration", () => {
+  it("can open a file in a specific split window", () => {
+    cy.visit("/")
+    cy.startNeovim({
+      startupScriptModifications: [
+        "add_yazi_context_assertions.lua",
+        "add_command_to_reveal_a_file.lua",
+      ],
+    }).then((nvim) => {
+      nvim.runExCommand({ command: "vsplit" })
+      cy.typeIntoTerminal("{upArrow}")
+
+      const file = "routes/posts.$postId/adjacent-file.txt"
+      hoverFileAndVerifyItsHovered(nvim, file)
+      cy.typeIntoTerminal("{control+o}")
+
+      // wait until the picker is showing labels for the splits. They will be
+      // labeled "a" and "s", and will have a particular background color
+      textIsVisibleWithBackgroundColor("s", flavors.macchiato.colors.peach.rgb)
+
+      cy.typeIntoTerminal("s")
+      nvim.runExCommand({ command: "buffers" }).and((result) => {
+        expect(result.value).to.contain("adjacent-file.txt")
+      })
     })
   })
 })
