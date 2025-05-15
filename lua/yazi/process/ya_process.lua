@@ -53,12 +53,10 @@ function YaProcess:get_yazi_command(paths)
 
   if self.config.open_multiple_tabs == true then
     for _, path in ipairs(paths) do
-      local filename = path.filename:gsub("\\", "/")
-      table.insert(command_words, vim.fn.shellescape(filename))
+      table.insert(command_words, vim.fn.shellescape(path.filename:gsub("\\", "/")))
     end
   else
-    local filename = paths[1].filename:gsub("\\", "/")
-    table.insert(command_words, vim.fn.shellescape(filename))
+    table.insert(command_words, vim.fn.shellescape(paths[1].filename:gsub("\\", "/")))
   end
 
   table.insert(command_words, "--chooser-file")
