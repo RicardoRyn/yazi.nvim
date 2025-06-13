@@ -110,21 +110,13 @@ local plugins = {
     },
   },
   {
-    "neovim/nvim-lspconfig",
+    -- https://github.com/mason-org/mason-lspconfig.nvim?tab=readme-ov-file#recommended-setup-for-lazynvim
+    "mason-org/mason-lspconfig.nvim",
+    opts = {},
     dependencies = {
-      { "williamboman/mason.nvim", version = "^1.0.0", opts = {} },
-      { "williamboman/mason-lspconfig.nvim", version = "^1.0.0", opts = {} },
+      { "mason-org/mason.nvim", opts = {} },
+      "neovim/nvim-lspconfig",
     },
-    config = function()
-      ---@diagnostic disable-next-line: missing-fields
-      require("mason-lspconfig").setup({
-        handlers = {
-          lua_ls = function()
-            require("lspconfig")["lua_ls"].setup({})
-          end,
-        },
-      })
-    end,
   },
 }
 require("lazy").setup({ spec = plugins })
@@ -138,3 +130,5 @@ do
     { bg = colors.peach, fg = "#000000" }
   )
 end
+
+vim.lsp.enable("lua-language-server")
